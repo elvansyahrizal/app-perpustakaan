@@ -40,5 +40,5 @@
         </tbody>
     </table>
 
-    <p><em>{{ $categories->links() }}</em></p>
+    {{ $categories->links() }}
 @endsection
