@@ -41,7 +41,7 @@ class ExampleTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect(route('books.index'));
+        $response->assertRedirect(route('dashboard'));
     }
 
     public function test_users_can_not_authenticate_with_invalid_password(): void

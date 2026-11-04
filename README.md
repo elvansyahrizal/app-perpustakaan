@@ -1,58 +1,86 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Sistem Perpustakaan Digital Kampus
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Aplikasi manajemen perpustakaan berbasis web menggunakan Laravel 12 dengan arsitektur MVC, REST API internal, dan Blade templating.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Prasyarat
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- PHP >= 8.2
+- Composer
+- MySQL / MariaDB
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## Panduan Instalasi & Konfigurasi
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
+### 1. Clone Repository & Install Dependensi
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+git clone <repository-url>
+cd app-perpustakaan
+composer install
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+### 2. Konfigurasi Environment (`.env`)
+Salin file `.env.example` atau buat `.env` baru:
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-## Contributing
+Pastikan variabel-variabel berikut diatur di dalam file `.env`:
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=db_perpustakaan
+DB_USERNAME=root
+DB_PASSWORD=
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+APP_FAKER_LOCALE=id_ID
 
-## Code of Conduct
+# Base URL instance kedua php artisan serve khusus panggilan API internal
+# (Http::get() dari DashboardController dan LoanController@report ke /api/...)
+INTERNAL_API_URL=http://127.0.0.1:8011
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### 3. Migrasi Database & Seeding
+Jalankan migrasi dan isi database dengan data dummy awal (users, categories, books, members, loans):
+```bash
+php artisan migrate:fresh --seed
+```
 
-## Security Vulnerabilities
+Data pengguna awal dari seeder:
+- **Admin**: `admin@pens.ac.id` | Password: `password` (Nama: Bambang Sutrisno)
+- **Petugas 1**: `petugas1@pens.ac.id` | Password: `password` (Nama: Siti Rahmawati)
+- **Petugas 2**: `petugas2@pens.ac.id` | Password: `password` (Nama: Ahmad Fauzi)
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+---
 
-## License
+## Menjalankan Aplikasi (Dual Server)
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Karena `php artisan serve` (PHP built-in server) bersifat *single-threaded* dan menangani satu request dalam satu waktu, pemanggilan API internal dari Controller (`DashboardController` dan `LoanController@report`) ke endpoint `/api/...` memerlukan **dua server berjalan bersamaan di port berbeda** untuk mencegah terjadinya *deadlock*:
+
+### Terminal 1 - Server Utama (Web & Browser)
+```bash
+php artisan serve --port=8000
+```
+Akses aplikasi melalui browser: [http://127.0.0.1:8000](http://127.0.0.1:8000)
+
+### Terminal 2 - Server API Internal
+```bash
+php artisan serve --port=8011
+```
+Server ini khusus melayani request internal dari aplikasi sendiri melalui Laravel HTTP Client (`Http::get()`).
+
+---
+
+## Fitur Utama
+
+1. **Autentikasi & Otorisasi**: Role Admin & Petugas dengan middleware proteksi.
+2. **Dashboard**: Ringkasan statistik (total buku, anggota, peminjaman aktif) dikonsumsi dari `GET /api/stats`.
+3. **CRUD Buku, Kategori & Anggota**: Dilengkapi form request validation dan pencarian.
+4. **Peminjaman & Pengembalian**: Mendukung multiple buku dalam satu transaksi dan pelacakan status.
+5. **Laporan Peminjaman**: Ditampilkan via Blade dari konsumsi `GET /api/loans`.
+6. **REST API**: 11 endpoint publik dengan format API Resource (`/api/books`, `/api/members`, `/api/loans`, `/api/stats`).
+7. **Kustom Pagination**: Tampilan teks/link rapi tanpa ketergantungan library Tailwind.
